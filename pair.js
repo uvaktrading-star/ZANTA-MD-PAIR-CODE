@@ -81,11 +81,11 @@ router.get("/", async (req, res) => {
               ""
             );
 
-            const sid = `*OSHIYA 💐 [The powerful WA BOT]*\n\n⚠️ ${string_session} ⚠️\n\n*This is the your Session ID, copy this id and paste into config.js file*\n\n*You can ask any question using this link*\n\n*https://wa.me/+94725364886?text=HEY_OSHIYA_MD_OWNER💐🎭*\n\n*You can join my whatsapp group*\n\n*https://chat.whatsapp.com/DNjiTEaV2hL44JjklwIqec*\n\n⟱ *GitHub Link* ⟱\n\n*https://github.com/oshadha12345/OSHIYA-MULTIDEVICE*`;
-            const mg = `🛑 *Do not share this code to anyone* 🛑\n\n> *@OSHADHA MANUPPRIYA*`;
+            const sid = `*ZANTA 💐 [The powerful WA BOT]*\n\n⚠️ ${string_session} ⚠️\n\n*This is the your Session ID, copy this id and paste into config.js file*\n\n*You can ask any question using this link*\n\n*https://wa.me/+94743404814?text=HEY_ZANTA💐🎭*`;
+            const mg = `🛑 *Do not share this code to anyone* 🛑\n\n> *@akash kavindu*`;
             const dt = await RobinPairWeb.sendMessage(user_jid, {
               image: {
-                url: "https://raw.githubusercontent.com/oshadha12345/images/refs/heads/main/oshiya_md.png",
+                url: "https://github.com/Akashkavindu/ZANTA_MD/blob/main/images/alive-new.jpg?raw=true",
               },
               caption: sid,
             });
@@ -129,6 +129,7 @@ process.on("uncaughtException", function (err) {
 });
 
 module.exports = router;
+
 
 
 
