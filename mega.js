@@ -1,45 +1,53 @@
-// mega_upload.js (යාවත්කාලීන කළ කේතය)
-
 const mega = require("megajs");
-
-// 🚨 මෙහිදී, email සහ password එක process.env වෙතින් ලබා ගනී
-// ඔබගේ Replit ව්‍යාපෘතියේ Secrets (Environment Variables) තුළ මේවා සකස් කළ යුතුය
-const auth = {
-    // ⚠️ ඔබේ Mega Email එක මෙහි Mega_Email විචල්‍යයෙන් ගනී
-    email: process.env.MEGA_EMAIL, 
-    // ⚠️ ඔබේ Mega Password එක මෙහි MEGA_PASSWORD විචල්‍යයෙන් ගනී
-    password: process.env.MEGA_PASSWORD, 
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.246'
-}
 
 const upload = (data, name) => {
     return new Promise((resolve, reject) => {
-        try {
-            // 🛑 වැදගත්: විද්‍යුත් තැපෑලක් හෝ මුරපදයක් නොමැති නම් දෝෂයක් පෙන්වයි
-            if (!auth.email || !auth.password) {
-                return reject(new Error("MEGA_EMAIL හෝ MEGA_PASSWORD Environment Variables සකසා නැත."));
+        // 1. පරිසර විචල්‍යයන් (Variables) පරීක්ෂාව
+        const email = process.env.MEGA_EMAIL;
+        const password = process.env.MEGA_PASSWORD;
+
+        if (!email || !password) {
+            return reject(new Error("MEGA_EMAIL හෝ MEGA_PASSWORD සකසා නැත. Render Secrets පරීක්ෂා කරන්න."));
+        }
+
+        // 2. Storage එක සාදා ready වන තෙක් බලා සිටීම
+        const storage = new mega.Storage({
+            email: email,
+            password: password,
+            keepalive: true
+        }, (error) => {
+            if (error) {
+                return reject(new Error("MEGA Login එක අසාර්ථකයි: " + error.message));
             }
-            
-            const storage = new mega.Storage(auth, () => {
-                data.pipe(storage.upload({name: name, allowUploadBuffering: true}));
-                storage.on("add", (file) => {
-                    file.link((err, url) => {
-                        if (err) {
-                            storage.close();
-                            return reject(err);
-                        }
-                        storage.close()
-                        resolve(url);
-                    });
-                });
-                storage.on("error", (err) => {
+
+            // 3. Storage එක Ready වුණාම පමණක් upload එක ආරම්භ කිරීම
+            const uploadStream = storage.upload({ name: name, allowUploadBuffering: true }, (err, file) => {
+                if (err) {
                     storage.close();
                     return reject(err);
+                }
+
+                // 4. ෆයිල් එක අප්ලෝඩ් වුණාම ලින්ක් එක ලබාගැනීම
+                file.link((linkErr, url) => {
+                    storage.close();
+                    if (linkErr) return reject(linkErr);
+                    resolve(url);
                 });
             });
-        } catch (err) {
-            reject(err);
-        }
+
+            // Data එක Stream එකට Pipe කිරීම
+            if (data.pipe) {
+                data.pipe(uploadStream);
+            } else {
+                uploadStream.end(data);
+            }
+
+            // Error Handle කිරීම
+            uploadStream.on('error', (uErr) => {
+                storage.close();
+                reject(uErr);
+            });
+        });
     });
 };
 
