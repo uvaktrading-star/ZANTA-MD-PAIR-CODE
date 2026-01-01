@@ -20,19 +20,19 @@ function removeFile(FilePath) {
 
 router.get("/", async (req, res) => {
   let num = req.query.number;
+  if (!num) return res.send({ error: "Number is required" });
+
   async function RobinPair() {
     const { state, saveCreds } = await useMultiFileAuthState(`./session`);
+    
     try {
       let RobinPairWeb = makeWASocket({
         auth: {
           creds: state.creds,
-          keys: makeCacheableSignalKeyStore(
-            state.keys,
-            pino({ level: "fatal" }).child({ level: "fatal" })
-          ),
+          keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" })),
         },
         printQRInTerminal: false,
-        logger: pino({ level: "fatal" }).child({ level: "fatal" }),
+        logger: pino({ level: "fatal" }),
         browser: Browsers.macOS("Safari"),
       });
 
@@ -46,93 +46,66 @@ router.get("/", async (req, res) => {
       }
 
       RobinPairWeb.ev.on("creds.update", saveCreds);
+
       RobinPairWeb.ev.on("connection.update", async (s) => {
         const { connection, lastDisconnect } = s;
+
         if (connection === "open") {
           try {
-            await delay(10000);
-            const sessionPrabath = fs.readFileSync("./session/creds.json");
-
-            const auth_path = "./session/";
-            const user_jid = jidNormalizedUser(RobinPairWeb.user.id);
-
-            function randomMegaId(length = 6, numberLength = 4) {
-              const characters =
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-              let result = "";
-              for (let i = 0; i < length; i++) {
-                result += characters.charAt(
-                  Math.floor(Math.random() * characters.length)
-                );
-              }
-              const number = Math.floor(
-                Math.random() * Math.pow(10, numberLength)
-              );
-              return `${result}${number}`;
+            await delay(5000); // පොඩි වෙලාවක් ඉන්න creds save වෙනකම්
+            
+            const auth_path = "./session/creds.json";
+            if (!fs.existsSync(auth_path)) {
+                console.log("Creds file not found yet...");
+                return;
             }
 
+            // 📤 Mega Upload ආරම්භය
+            console.log("Uploading to Mega...");
             const mega_url = await upload(
-              fs.createReadStream(auth_path + "creds.json"),
-              `${randomMegaId()}.json`
+              fs.createReadStream(auth_path),
+              `ZANTA_${Math.floor(Math.random() * 10000)}.json`
             );
 
-            const string_session = mega_url.replace(
-              "https://mega.nz/file/",
-              ""
-            );
+            const string_session = mega_url.replace("https://mega.nz/file/", "");
 
-            const sid = `*ZANTA 💐 [The powerful WA BOT]*\n\n⚠️ ${string_session} ⚠️\n\n*This is the your Session ID, copy this id and paste into config.js file*\n\n*You can ask any question using this link*\n\n*https://wa.me/+94743404814?text=HEY_ZANTA💐🎭*`;
-            const mg = `🛑 *Do not share this code to anyone* 🛑\n\n> *@akash kavindu*`;
-            const dt = await RobinPairWeb.sendMessage(user_jid, {
-              image: {
-                url: "https://github.com/Akashkavindu/ZANTA_MD/blob/main/images/alive-new.jpg?raw=true",
-              },
+            const user_jid = jidNormalizedUser(RobinPairWeb.user.id);
+            const sid = `*ZANTA 💐 [The powerful WA BOT]*\n\n⚠️ ${string_session} ⚠️\n\n*This is your Session ID*`;
+            
+            // 📩 පණිවිඩ යැවීම
+            await RobinPairWeb.sendMessage(user_jid, {
+              image: { url: "https://github.com/Akashkavindu/ZANTA_MD/blob/main/images/alive-new.jpg?raw=true" },
               caption: sid,
             });
-            const msg = await RobinPairWeb.sendMessage(user_jid, {
-              text: string_session,
-            });
-            const msg1 = await RobinPairWeb.sendMessage(user_jid, { text: mg });
-          } catch (e) {
-            exec("pm2 restart prabath");
-          }
+            
+            await RobinPairWeb.sendMessage(user_jid, { text: string_session });
+            
+            console.log("Session sent successfully!");
 
-          await delay(100);
-          return await removeFile("./session");
-          process.exit(0);
-        } else if (
-          connection === "close" &&
-          lastDisconnect &&
-          lastDisconnect.error &&
-          lastDisconnect.error.output.statusCode !== 401
-        ) {
-          await delay(10000);
-          RobinPair();
+            // 🧹 Cleanup
+            await delay(2000);
+            removeFile("./session");
+            // 🛑 වැදගත්: ඔක්කොම ඉවර වුණාම පමණක් රීස්ටාර්ට් කරන්න
+            // exec("pm2 restart Robin"); 
+
+          } catch (e) {
+            console.log("Error in connection open: ", e);
+          }
+        } 
+        
+        if (connection === "close") {
+          let reason = lastDisconnect?.error?.output?.statusCode;
+          if (reason !== 401) {
+             RobinPair();
+          }
         }
       });
     } catch (err) {
-      exec("pm2 restart Robin-md");
-      console.log("service restarted");
-      RobinPair();
-      await removeFile("./session");
-      if (!res.headersSent) {
-        await res.send({ code: "Service Unavailable" });
-      }
+      console.log("Main Error: ", err);
+      removeFile("./session");
     }
   }
   return await RobinPair();
 });
 
-process.on("uncaughtException", function (err) {
-  console.log("Caught exception: " + err);
-  exec("pm2 restart Robin");
-});
-
 module.exports = router;
-
-
-
-
-
-
-
